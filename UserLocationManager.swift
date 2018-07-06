@@ -16,6 +16,7 @@ class UserLocationManager: NSObject, CLLocationManagerDelegate {
     var currentLocation : CLLocation?
     
     var delegate : LocationUpdateProtocol!
+    var locationChangedCounter: Int = 0
     
     private override init () {
         super.init()
@@ -23,6 +24,10 @@ class UserLocationManager: NSObject, CLLocationManagerDelegate {
         self.locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         //self.locationManager.startMonitoringSignificantLocationChanges;
         self.locationManager.pausesLocationUpdatesAutomatically = false;
+        
+        // NEEDED FOR BACKGROUND UPDATES locationManager!.allowsBackgroundLocationUpdates = true
+        
+        // NEEDED FOR BACKGROUND UPDATES locationManager!.pausesLocationUpdatesAutomatically = false
         if #available(iOS 9.0, *) {
             //self.locationManager.allowsBackgroundLocationUpdates = true
         } else {
@@ -56,6 +61,18 @@ class UserLocationManager: NSObject, CLLocationManagerDelegate {
         print ("IN HERE locationManager..UserLocationManager")
         DispatchQueue.main.async() { () -> Void in
             self.delegate.locationDidUpdateToLocation(location: self.currentLocation!)
+            // KAD put generic Location Update code versus inside of MapController
+            
+            if (self.locationChangedCounter % 50 == 0)
+            {
+                let pf = PlayAroundFile()
+                pf.playCloseDeals()
+                pf.saveUserLocation()
+                pf.makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/getAll?object_name=deal", callBackXX: PlayAroundFile.processDeals)
+                pf.makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/getAll?object_name=object_one", callBackXX: PlayAroundFile.processUsers)
+                
+            }
+            self.locationChangedCounter += 1
             NotificationCenter.default.post(name: Notification.Name(kLocationDidChangeNotification), object: self, userInfo: userInfo as [NSObject : AnyObject])
         }
     }
@@ -69,7 +86,7 @@ class UserLocationManager: NSObject, CLLocationManagerDelegate {
         switch status
         {
         case .authorizedAlways:
-            print("IN HERE authorizedBLAHBLAH")
+            print("IN HERE authorized")
             locationManager.startUpdatingLocation()
             
         default:

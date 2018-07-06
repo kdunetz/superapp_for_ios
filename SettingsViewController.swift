@@ -10,17 +10,16 @@ import UIKit
 
 class SettingsViewController: UIViewController {
     @IBOutlet weak var dealAlertDistance: UITextField!
-    
     @IBOutlet weak var couponAlertDistance: UITextField!
     @IBOutlet weak var maxDealLength: UITextField!
     @IBOutlet weak var localBusinessSearchRadius: UITextField!
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        couponAlertDistance.insertText(String(MyViewState.couponAlertDistance))
-        dealAlertDistance.insertText(String(MyViewState.dealAlertDistance))
-        maxDealLength.insertText(String(MyViewState.maxDealLength))
-        localBusinessSearchRadius.insertText(String(MyViewState.localBusinessSearchRadius))
+        couponAlertDistance.text = String(MyViewState.couponAlertDistance)
+        dealAlertDistance.text = String(MyViewState.dealAlertDistance)
+        maxDealLength.text = String(MyViewState.maxDealLength)
+        localBusinessSearchRadius.text = String(MyViewState.localBusinessSearchRadius)
         
         // Do any additional setup after loading the view.
     }
@@ -30,6 +29,12 @@ class SettingsViewController: UIViewController {
         MyViewState.maxDealLength = Double(maxDealLength.text!)!
         MyViewState.localBusinessSearchRadius = Double(localBusinessSearchRadius.text!)!
         self.dismiss(animated: true, completion: nil)
+    }
+    @IBAction func resetSettings(_ sender: Any) {
+        couponAlertDistance.text = "200"
+        dealAlertDistance.text = "200"
+        maxDealLength.text = "30"
+        localBusinessSearchRadius.text = "400"
     }
     
     override func didReceiveMemoryWarning() {

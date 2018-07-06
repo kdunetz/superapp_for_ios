@@ -34,6 +34,7 @@ extension UIImage
 class TakePictureViewController: UIViewController, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
 
     var imagePicker: UIImagePickerController!
+    var receipt: Receipt!
 
     @IBAction func takeAPicture(_ sender: Any) {
         imagePicker =  UIImagePickerController()
@@ -42,25 +43,28 @@ class TakePictureViewController: UIViewController, UINavigationControllerDelegat
         present(imagePicker, animated: true, completion: nil)
     }
     @IBOutlet var pictureView: UIImageView!
+    @IBOutlet weak var companyName: UITextField!
+ 
+    @IBOutlet weak var dealText: UITextField!
+    @IBOutlet weak var website: UITextField!
+    @IBOutlet weak var promoCode: UITextField!
+    @IBOutlet weak var dateText: UITextField!
+    @IBOutlet weak var numDays: UITextField!
+    @IBOutlet weak var couponExpirationDays: UITextField!
+    @IBOutlet weak var couponReward: UITextField!
     
-    @IBAction func saveDealToDatabase(_ sender: Any) {
-    }
     
-    @IBOutlet var dealTextField: UITextField!
-    @IBOutlet var dateTextField: UITextField!
     override func viewDidLoad() {
         super.viewDidLoad()
         imagePicker =  UIImagePickerController()
         //imagePicker.delegate = TakePictureViewController
         imagePicker.sourceType = .camera
         present(imagePicker, animated: true, completion: nil)
-        dealTextField.isHidden = true
-        dateTextField.isHidden = true
-
+        //dealTextField.isHidden = true
+        //dateTextField.isHidden = true
+        
         // Do any additional setup after loading the view.
     }
-
-
         
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         imagePicker.dismiss(animated: true, completion: nil)
@@ -158,7 +162,7 @@ class TakePictureViewController: UIViewController, UINavigationControllerDelegat
         json += "  ]\n"
         json += "}";
         print (json)
-        paf.makePostCall(urlInput: "https://vision.googleapis.com/v1/images:annotate?key=AIzaSyBESW49t48CGrcITU7-V34PeQkWAoOeBYM", json: json, callBackXX: processImageResult)
+        paf.makePostCall(urlInput: "https://vision.googleapis.com/v1/images:annotate?key=AIzaSyDCDhTlu3ZBZ3BvtgUbQfS1DqHdPWCWzzk", json: json, callBackXX: processImageResult)
         /*
          bitmapImage = BitmapFactory.decodeStream(new ByteArrayInputStream(out.toByteArray()));
          
@@ -187,13 +191,54 @@ class TakePictureViewController: UIViewController, UINavigationControllerDelegat
     func processImageResult(json: [String: Any]) -> Void
     {
         print ("In processImageResult")
-        print(json["result"])
-     
+        //print(json["result"])
+    
+        if let theJSONData = try?  JSONSerialization.data(
+            withJSONObject: json,
+            options: .prettyPrinted
+            ),
+            let theJSONText = String(data: theJSONData,
+                                     encoding: String.Encoding.ascii) {
+            let startingPoint = theJSONText.range(of: "description")
+            var result = theJSONText.substring(from: (startingPoint?.upperBound)!)
+            var endString = result.range(of: ";")
+            
+            print(endString)
+            let index = result.index(result.startIndex, offsetBy: 200)
+            
+            //result = result.substring(to: (endString?.upperBound)!)
+            result = result.substring(to: index)
+            
+
+            print("MADE IT HERE" + result)
+            let pf = PlayAroundFile()
+            receipt = pf.parseOutReceipt(value: result)
+           
+        }
+        
+        
         DispatchQueue.main.async { // 2
-            self.dealTextField.isHidden = false
-            self.dateTextField.isHidden = false
-            self.dealTextField.text = "Kevin"
-            self.dateTextField.text = "Bob"
+            //self.dealTextField.isHidden = false
+            //self.dateTextField.isHidden = false
+            self.dealText.text = self.receipt.description
+            self.companyName.text = self.receipt.company_name
+            self.website.text = self.receipt.url
+            let dateFormatterGet = DateFormatter()
+            dateFormatterGet.dateFormat = "MM/dd/yyyy"
+            
+            self.dateText.text = dateFormatterGet.string(from: self.receipt.date)
+            self.promoCode.text = self.receipt.promo_code
+            self.numDays.text = String(self.receipt.num_days)
+            self.couponReward.text = ""
+            self.couponExpirationDays.text = String(self.receipt.valid_days)
+            
+            if (false)
+            {
+                let storyboard: UIStoryboard = UIStoryboard(name: "Second_iPhone", bundle: nil)
+                let vc: UIViewController = storyboard.instantiateViewController(withIdentifier: "cameraID") as UIViewController
+                let segue: UIStoryboardSegue = UIStoryboardSegue(identifier: "kevin", source: self, destination: vc)
+                self.prepare(for: segue, sender: "")
+            }
         }
         
         //let appDelegate = UIApplication.shared.delegate as! AppDelegate // THIS IS HOW YOU CALL A DELEGATE VARIABLE FROM SWIFT Class
@@ -207,14 +252,14 @@ class TakePictureViewController: UIViewController, UINavigationControllerDelegat
     }
     
 
-    /*
+    
     // MARK: - Navigation
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
+        //Get the new view controller using segue.destinationViewController.
+        self.present(segue.destination, animated: true, completion: nil)
         // Pass the selected object to the new view controller.
     }
-    */
 
 }

@@ -48,7 +48,7 @@ import MapKit
                                   coordinate: CLLocationCoordinate2D(latitude: 38.79597475, longitude:  -77.3640182))
      
             mapView1.addAnnotation(artwork) */
-
+     
         mapView1.mapType = .hybrid
         mapView1.isZoomEnabled = true
         if #available(iOS 9.0, *) {
@@ -70,6 +70,8 @@ import MapKit
                 
             case .success:
                 print("Success: \(currentLocation)")
+                let pf = PlayAroundFile()
+                pf.playCloseDeals()
             case .timedOut:
                 print("Timed Out: \(currentLocation)")
             default:
@@ -98,7 +100,7 @@ import MapKit
         var anView = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId)
       
         if anView == nil {
-            anView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+            anView = MKAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
             anView?.canShowCallout = true
         }
         else {
@@ -256,9 +258,14 @@ import MapKit
 
                 self.mapView1.addAnnotation(artwork)
                 self.locationChangedCounter =  self.locationChangedCounter + 1
-                pf.playCloseDeals()
-                if (self.locationChangedCounter % 5 == 0)
+                if (self.locationChangedCounter % 50 == 0)
                 {
+                    //pf.playCloseDeals()
+                    //pf.saveUserLocation()
+                    //pf.makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/getAll?object_name=deal", callBackXX: PlayAroundFile.processDeals)
+                    //pf.makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/getAll?object_name=object_one", callBackXX: PlayAroundFile.processUsers)
+                    
+                    
                     let users = pf.getUsers()
                     for anItem in users as! [Dictionary<String, Any>]  {  // or [[String:Any]]
                         print ("Display Users")
@@ -266,15 +273,111 @@ import MapKit
                             let username = anItem["username"] as! String
                             let latitude = anItem["latitude"] as! String
                             let longitude = anItem["longitude"] as! String
-                            let artwork = UserObject(username: username, title: username,
-                                                  locationName: username,
-                                                  discipline: "Sculpture",
-                                                  coordinate: CLLocationCoordinate2D(latitude: Double(latitude)!, longitude:  Double(longitude)!))
-                            self.mapView1.addAnnotation(artwork)
-                            print("printing users")
+                            if latitude.count > 0 && longitude.count > 0 && username != MyViewState.currentUser
+                            {
+                                let artwork = UserObject(username: username, title: username,
+                                                      locationName: latitude + "," + longitude,
+                                                      discipline: "Sculpture",
+                                                      coordinate: CLLocationCoordinate2D(latitude: Double(latitude)!, longitude:  Double(longitude)!))
+                                self.mapView1.addAnnotation(artwork)
+                                print("printing users")
+                            }
+                            else
+                            {
+                                print(username + " has empty latitude or longitude")
+                            }
                         }
                     }
                 }
+                // PROCESS COUPON ALERTS
+                if (self.locationChangedCounter % 1 == 0)
+                {
+                    let deals = pf.getDeals()
+                    print ("Processing Coupon Alerts")
+                    for deal in deals as! [Dictionary<String, Any>]  {  // or [[String:Any]]
+                        
+                        if deal["username"] == nil || deal["deal"] == nil || deal["latitude"] == nil || deal["longitude"] == nil || deal["coupon_expiration_days"] == nil || deal["coupon_expiration_days"] == nil {
+                            continue;
+                        }
+                        let dealUserName = deal["username"] as! String
+                        let dealText = deal["deal"] as! String
+                        let dealId = deal["_id"] as! String
+                        print ("Made it here + " + dealId)
+                        
+                        if (MyViewState.currentUser != dealUserName) {
+                            continue;
+                       }
+                      
+                        let days = deal["coupon_expiration_days"] as! String
+                        let date = deal["date"] as! String
+                        let dealCompanyName = deal["company_name"] as! String
+                        
+                        print ("Checking deals for " + dealCompanyName);
+                        if pf.couponActive(date: date, days: days) {
+                      
+                            print ("Found active deal for " + dealCompanyName)
+                           
+                            let localBusinesses = MyViewState.localBusinesses
+                            print ("Processing Local Businesses")
+                            
+                            for localBusiness in localBusinesses as! [Dictionary<String, Any>]  {  // or [[String:Any]]
+                                if localBusiness["name"] != nil && localBusiness["latitude"] != nil && localBusiness["longitude"] != nil {
+                                    let localBusinessId = localBusiness["id"] as! String
+                                    let localBusinessName = localBusiness["name"] as! String
+                                    let latitude = localBusiness["latitude"] as! Double
+                                    let longitude = localBusiness["longitude"] as! Double
+                    
+                                    print ("Found deal 1" + localBusinessName)
+                                    
+                                
+                                    print ("Found deal before if statements :" + localBusinessName + "," + dealCompanyName + "," + dealUserName + "," + MyViewState.currentUser)
+                                    
+                                    if (!self.companyNameMatch(companyName: dealCompanyName,  name: localBusinessName)) {
+                                        print("companyMatch failed: " + dealCompanyName + "," + localBusinessName)
+                                        continue
+                                    }
+                                    
+                                    print ("Found deal before if statements :" + localBusinessName + "," + dealCompanyName + "," + dealUserName + "," + MyViewState.currentUser)
+                                    
+                                    
+                                    let dealLocation = CLLocation(latitude: latitude , longitude:  longitude )
+                                    let distance = pf.distanceBetween(location1: currentLocation, location2: dealLocation) as Double
+                                    print("distance = %d, %s", distance, dealText, currentLocation)
+                                   // let message = "Looking for close " + name + " - " +
+                                     //   "," + distance + "," + latitude + "," + longitude
+                                    
+                                    //print (message)
+                                    
+                                    if ((distance < Double(MyViewState.couponAlertDistance)) && (MyViewState.couponHash[dealId+localBusinessId] == false || MyViewState.couponHash[dealId+localBusinessId] == nil)) { // 200
+                                        //if (anItem["playOnFrontSide"] != nil) {
+                                        
+                                        print("SPEAKING " + dealText)
+                                        if (deal.count < Int(MyViewState.maxDealLength)) {
+                                            pf.speakWords(words: dealCompanyName + " is near. You have a coupon." + dealText);
+                                        }
+                                        //}
+                                        MyViewState.couponHash[dealId+localBusinessId] = true;
+                                    }
+                                    if (distance > Double(MyViewState.couponAlertDistance) && MyViewState.couponHash[dealId+localBusinessId] == true) { //200
+                                        //if (anItem["playOnBackSide"] != nil) {
+                                        print("SPEAKING " + dealText)
+                                        if (deal.count < Int(MyViewState.maxDealLength)) {
+                                            pf.speakWords(words: dealCompanyName + " is near. You have a coupon.");
+                                        }
+                                        // }
+                                        MyViewState.couponHash[dealId+localBusinessId] = false;
+                                        
+                                    }
+                                }
+                                else
+                                {
+                                    print("has empty latitude or longitude")
+                                }
+                            }// loop for localBusinesses
+                        } // couponActive
+                    } // for loop for deals
+                } // end of if
+                // DISPLAY DEALS ON MAP
                 if (self.locationChangedCounter % 5 == 0)
                 {
                     let deals = pf.getDeals()
@@ -287,12 +390,20 @@ import MapKit
                             let deal = anItem["deal"] as! String
                             let latitude = anItem["latitude"] as! String
                             let longitude = anItem["longitude"] as! String
-                            let artwork = DealObject(title: deal, type: "coupon",
-                                                  locationName: deal,
-                                                  discipline: "Sculpture",
-                                                  coordinate: CLLocationCoordinate2D(latitude: Double(latitude)!, longitude:  Double(longitude)!))
-                            self.mapView1.addAnnotation(artwork)
-                            print("printing deals")
+                            if latitude.count > 0 && longitude.count > 0
+                            {
+                                let artwork = DealObject(title: deal, type: "coupon",
+                                                      locationName: deal,
+                                                      discipline: "Sculpture",
+                                                      coordinate: CLLocationCoordinate2D(latitude: Double(latitude)!, longitude:  Double(longitude)!))
+                                self.mapView1.addAnnotation(artwork)
+                                print("printing deals")
+                            }
+                            else
+                            {
+                                print(deal + " has empty latitude or longitude")
+                        
+                            }
                         }
                     }
                 }
@@ -319,39 +430,63 @@ import MapKit
                         }
                     }
                     
-                }
+                } // end of locationChangedCounter
             }
             else {
                 // An error occurred
                 //KAD strongSelf!.statusLabel.text = strongSelf?.getLocationErrorDescription(locationStatus)
                 print ("IN FAILURE")
             }
+        
         })
+    }
+    public func companyNameMatch(companyName: String, name: String) -> Bool
+    {
+        let name = name.uppercased().replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "-", with: " ")
+        let companyName = companyName.uppercased().replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "-", with: " ")
+        if (name == companyName)  {
+            return true
+        }
+        
+        if (name.contains(companyName)) {
+            return true
+        }
+        
+        if (companyName.contains(name)) {
+            return true
+        }
+        return false
     }
     public func processLocalBusinesses(json: [String: Any]) -> Void
     {
+        MyViewState.localBusinesses = []
         let pf = PlayAroundFile()
-        pf.printJSON(obj: json)
+        //pf.printJSON(obj: json)
         let location = json["results"]
-        print (location)
-        pf.printJSON(obj: location)
+        //print (location)
+        //pf.printJSON(obj: location)
+        var localBusiness: [String:Any] = [:]
         for anItem in location as! [Dictionary<String, Any>]  {  // or [[String:Any]]
-            print ("Looping through Locations")
+            //print ("Looping through Locations")
             let geometry = anItem["geometry"] as! [String: Any]
             let name = anItem["name"]
-            pf.printJSON(obj: geometry)
+            let id = anItem["id"]
+            //pf.printJSON(obj: geometry)
             let location = geometry["location"] as! [String: Any]
-            pf.printJSON(obj: location)
+            //pf.printJSON(obj: location)
             let latitude = location["lat"] as! Double
             let longitude = location["lng"] as! Double
-             print (latitude)
-             print (longitude)
+            localBusiness["id"] = id
+            localBusiness["name"] = name
+            localBusiness["latitude"] = latitude
+            localBusiness["longitude"] = longitude
             let artwork = LocationObject(title: name as! String, type: "Local Business",
                                          locationName: name as! String,
                                      discipline: "Sculpture",
                                      coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
             
             mapView1.addAnnotation(artwork)
+            MyViewState.localBusinesses.append(localBusiness)
         }
         /*
  {

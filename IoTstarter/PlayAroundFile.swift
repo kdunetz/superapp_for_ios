@@ -96,23 +96,20 @@ let strBase64 = "R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs="
         
           makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/authenticate?username=%22" + MyViewState.currentUser + "%22", callBackXX: PlayAroundFile.processUserResult)
     }
-class public func processImageResult(json: [String: Any]) -> Void
-{
-    //let appDelegate = UIApplication.shared.delegate as! AppDelegate // THIS IS HOW YOU CALL A DELEGATE VARIABLE FROM SWIFT Class
-    //appDelegate.deals = json
-    //deals = json
-    //MyViewState.deals = json
-    print (" in process Image Result")
-    print(json)
-    //let json = JSON(data: json)
-}
-    class public func saveDeal(json: [String: Any]) -> Void
+    class public func processImageResult(json: [String: Any]) -> Void
     {
-        guard let todoTitle = json["title"] as? String else {
-            print("Could not get todo title from JSON")
-            return
-        }
-        print("Callback called: title = " + (json["title"] as? String)!)
+        //let appDelegate = UIApplication.shared.delegate as! AppDelegate // THIS IS HOW YOU CALL A DELEGATE VARIABLE FROM SWIFT Class
+        //appDelegate.deals = json
+        //deals = json
+        //MyViewState.deals = json
+        print (" in process Image Result")
+        print(json)
+        //let json = JSON(data: json)
+    }
+    class public func saveUser(json: [String: Any]) -> Void
+    {
+        let pf = PlayAroundFile()
+        pf.makeGetCallArray(urlInput: "https://new-node-red-demo-kad.mybluemix.net/authenticate?username=%22" + MyViewState.currentUser + "%22", callBackXX: PlayAroundFile.processUserResult)
     }
     class public func processLocalBusinesses(json: [String: Any]) -> Void
     {
@@ -158,6 +155,7 @@ class public func processImageResult(json: [String: Any]) -> Void
         if (false) {// just put a loopback in here for testing
             let pf = PlayAroundFile()
             //pf.saveUserLocation()
+        
         }
     }
     public func printJSON(obj : Any)
@@ -201,7 +199,7 @@ class public func processImageResult(json: [String: Any]) -> Void
             let theJSONText = String(data: theJSONData,
                                      encoding: String.Encoding.ascii) {
             print("JSON string = \n\(theJSONText)")
-            makePostCall(urlInput: "https://new-node-red-demo-kad.mybluemix.net/save?object_name=object_one", json: theJSONText, callBackXX: PlayAroundFile.saveDeal)
+            makePostCall(urlInput: "https://new-node-red-demo-kad.mybluemix.net/save?object_name=object_one", json: theJSONText, callBackXX: PlayAroundFile.saveUser)
             
         }
         
@@ -224,6 +222,10 @@ class public func processImageResult(json: [String: Any]) -> Void
         print("in playCloseDeals")
         let appDelegate = UIApplication.shared.delegate as! AppDelegate // THIS IS HOW YOU CALL A DELEGATE VARIABLE FROM SWIFT Class
         let location = appDelegate.latestLocation
+        
+        if location == nil {
+            return
+        }
 
         for anItem in MyViewState.deals {
             print ("in deal loop")
@@ -234,34 +236,37 @@ class public func processImageResult(json: [String: Any]) -> Void
             }
             if anItem["deal"] != nil && anItem["latitude"] != nil && anItem["longitude"] != nil && deal != nil && deal.length < 30 {
                 print (anItem.keys)
-                let dealLatitudeAny = anItem["latitude"]
-                let dealLatitude = (dealLatitudeAny as! NSString).doubleValue
+                let dealLatitudeAny = anItem["latitude"] as! String
+                let dealLatitude = Double(dealLatitudeAny)
 
-                let dealLongitudeAny = anItem["longitude"]
-                let dealLongitude = (dealLongitudeAny as! NSString).doubleValue
-
-                let dealLocation = CLLocation(latitude: dealLatitude , longitude:  dealLongitude )
-                let distance = distanceBetween(location1: location!, location2: dealLocation) as Double
-         print("distance = %d, %s", distance, deal)
-                if ((distance < Double(MyViewState.dealAlertDistance)) && (hasher[(deal as String) + "setLastSpoke"] == false || hasher[(deal as String) + "setLastSpoke"] == nil)) { // 200
-                    //if (anItem["playOnFrontSide"] != nil) {
-                    
-                    print("SPEAKING " + (anItem["deal"] as! String))
-                    if (deal.length < Int(MyViewState.maxDealLength)) {
-                        self.speakWords(words: anItem["deal"] as! String);
+                let dealLongitudeAny = anItem["longitude"] as! String
+                let dealLongitude = Double(dealLongitudeAny)
+                
+                if (dealLatitudeAny != "" && dealLongitudeAny != "")
+                {
+                    let dealLocation = CLLocation(latitude: dealLatitude! , longitude:  dealLongitude! )
+                    let distance = distanceBetween(location1: location!, location2: dealLocation) as Double
+             print("distance = %d, %s", distance, deal)
+                    if ((distance < Double(MyViewState.dealAlertDistance)) && (hasher[(deal as String) + "setLastSpoke"] == false || hasher[(deal as String) + "setLastSpoke"] == nil)) { // 200
+                        //if (anItem["playOnFrontSide"] != nil) {
+                        
+                        print("SPEAKING " + (anItem["deal"] as! String))
+                        if (deal.length < Int(MyViewState.maxDealLength)) {
+                            self.speakWords(words: anItem["deal"] as! String);
+                        }
+                        //}
+                        hasher[(deal as String) + "setLastSpoke"] = true;
                     }
-                    //}
-                    hasher[(deal as String) + "setLastSpoke"] = true;
-                }
-                if (distance > Double(MyViewState.dealAlertDistance) && hasher[(deal as String) + "setLastSpoke"] == true) { //200
-                    //if (anItem["playOnBackSide"] != nil) {
-                    print("SPEAKING " + (anItem["deal"] as! String))
-                    if (deal.length < Int(MyViewState.maxDealLength)) {
-                        self.speakWords(words: anItem["deal"] as! String);
-                    }
-                   // }
-                    hasher[(deal as String)+"setLastSpoke"] = false;
+                    if (distance > Double(MyViewState.dealAlertDistance) && hasher[(deal as String) + "setLastSpoke"] == true) { //200
+                        //if (anItem["playOnBackSide"] != nil) {
+                        print("SPEAKING " + (anItem["deal"] as! String))
+                        if (deal.length < Int(MyViewState.maxDealLength)) {
+                            self.speakWords(words: anItem["deal"] as! String);
+                        }
+                       // }
+                        hasher[(deal as String)+"setLastSpoke"] = false;
 
+                    }
                 }
                 
             }
@@ -520,14 +525,7 @@ class public func processImageResult(json: [String: Any]) -> Void
     }
     }
     
-    struct Receipt {
-        let company_name: String
-        let url: String
-        let promo_code: String
-        let date: Date
-        let num_days: Int
-        let valid_days: Int
-    }
+
     
     func  parseOutReceipt(value: String) -> Receipt {
         var company_name = "";
@@ -679,7 +677,7 @@ print(num_days)
         website = "http://www.mybkexperience.com";
     }
         
-        var receipt = Receipt.init(company_name: company_name, url: website, promo_code: promo_code,  date: dateVar, num_days: Int(num_days)!, valid_days: Int(valid_days)!)
+        var receipt = Receipt.init(description: value, company_name: company_name, url: website, promo_code: promo_code,  date: dateVar, num_days: Int(num_days)!, valid_days: Int(valid_days)!)
 
     //Log.d("debugme", "JSON = " + json.toString());
         return receipt;
@@ -692,6 +690,7 @@ print(num_days)
         let dateFormatterPrint = DateFormatter()
         dateFormatterPrint.dateFormat = "yyyy-MM-dd"
         
+        
         if let date = dateFormatterGet.date(from: value) {
             return date //dateFormatterPrint.string(from: date)
         }
@@ -700,5 +699,19 @@ print(num_days)
             return Date()
         }
     
+    }
+    func couponActive(date: String, days: String) -> Bool
+    {
+        let now = Date()
+        let dateFormatterGet = DateFormatter()
+        dateFormatterGet.dateFormat = "yyyy-MM-dd"
+        let couponDate = dateFormatterGet.date(from: date)
+        
+        let futureDate = couponDate?.addingTimeInterval(Double(days)! * 24 * 60 * 60)
+        
+        if (futureDate! > now) {
+            return true
+        }
+        return false
     }
 }
